@@ -1,0 +1,195 @@
+{
+    "single_orders": {
+        "simple": {
+            "commands":[{
+                "key": "stretch",
+                "description": "Log times I stretched",
+                "reply": "Yay, good to hear !"
+              },
+              {
+                "key": "period",
+                "description": "Log period starting day",
+                "reply": "Ow man, I hope you're not feeling too bad"
+              },
+              {
+                "key": "endperiod",
+                "description": "Log period ending day",
+                "reply": "Yeesss girl"
+              },
+              {
+                "key": "hungry",
+                "description": "Log times I felt hungry",
+                "reply": "Try not to delve into junk food"
+              },
+              {
+                "key": "ateout",
+                "description": "Log times I ate outside",
+                "reply": "I hope it was worth it!"
+              },
+              {
+                "key": "sugarydrink",
+                "description": "Log times I had a sugary drink",
+                "reply": "Noted !"
+              },
+              {
+                "key": "sugarysnack",
+                "description": "Log times I had a sugary snack",
+                "reply": "Noted !"
+              },
+              {
+                "key": "saltysnack",
+                "description": "Log times I had a salty snack",
+                "reply": "Noted !"
+              },
+              {
+                "key": "10000steps",
+                "description": "Log times I walked 10000 steps",
+                "reply": "Yay, that's my healthy girl !"
+              }]
+            },
+
+        "complex": {
+            "commands":[{
+                "key": "headache",
+                "description": "Log times I had a headache",
+                "follow_up_question" : "Do you know the reason ?",
+                "buttons":{
+                    "5": "lack of sleep",
+                    "4": "hunger/thirst",
+                    "3": "too much screen",
+                    "2": "got bad news",
+                    "1": "don't know",
+                    "0": "specific case"
+                },
+                "follow_up_replies": {
+                    "5": "Try to take a nap or sleep early tonight",
+                    "4": "A glass of water might be ideal",
+                    "3": "Take a break, you probably need it",
+                    "2": "Do some breathing exercise and calmly think about the situation",
+                    "1": "Well, I hope you'll get better",
+                    "0": "Can you give me some details ?"
+                },
+                "reply": {
+                    "0":"Noted"
+                }
+              },
+              {
+                "key": "hobbies",
+                "description": "Log times I enjoyed my hobbies",
+                "follow_up_question" : "Good to hear ! What did you do ?",
+                "buttons":{
+                    "5": "reading",
+                    "4": "watched TV",
+                    "3": "crafting",
+                    "2": "gaming",
+                    "1": "cooking",
+                    "0": "specific case"
+                },
+                "follow_up_replies": {
+                    "5": "Good thing ! Don't forget to take a break",
+                    "4": "Good thing ! Don't forget to take a break",
+                    "3": "Good to hear !",
+                    "2": "Good thing ! Don't forget to take a break",
+                    "1": "Good to hear ! Don't forget to clean after yourself... and take a picture !",
+                    "0": "Can you give me some details ?"
+                },
+                "reply": {
+                    "0":"Noted ! Nice to hear !"
+                }
+              },
+              {
+                "key": "stomachache",
+                "description": "Log times I had a stomachache",
+                "follow_up_question" : "Do you know the reason ?",
+                "buttons":{
+                    "5": "ate too much",
+                    "4": "stress/anxiety",
+                    "3": "period",
+                    "2": "bad food",
+                    "1": "don't know",
+                    "0": "specific case"
+                },
+                "follow_up_replies": {
+                    "5": "A walk might help you get better",
+                    "4": "Try some breathing exercise",
+                    "3": "Try some breathing exercise",
+                    "2": "Maybe note the type of food that made you sick so you know to avoid it next time",
+                    "1": "Well, I hope you'll get better",
+                    "0": "Can you give me some details ?"
+                },
+                "reply": {
+                    "0":"Noted !"
+                }
+              },
+              {
+                "key": "gym",
+                "description": "Log gym visits",
+                "follow_up_question": "Yay, good to hear ! What did you train ?",
+                "buttons":{
+                    "2": "running sesh",
+                    "1": "upper body sesh",
+                    "0": "lower body sesh"
+                },
+                "follow_up_replies": {
+                    "2": "Good to hear ! Do you want to add your distance and time ?",
+                    "1": "Good to hear ! Don't forget to flex those muscles in front of the mirror",
+                    "0": "Good to hear !  Don't forget to flex those muscles in front of the mirror"
+                },
+                "reply":"Noted !"
+              },
+              {
+                "key": "nap",
+                "description": "Log naps",
+                "follow_up_question": "How long did you nap ?",
+                "buttons":{
+                    "5": "10min-20min",
+                    "4": "20min-40min",
+                    "3": "1h-1h30",
+                    "2": "2h",
+                    "1": "3h",
+                    "0": ">3h"
+                },
+                "follow_up_replies": {
+                    "5": "Good job ! On your way to be a power-nap girl",
+                    "4": "I'm sure you needed it, good job",
+                    "3": "That's a bit too much",
+                    "2": "Girl, did you sleep enough last night ?",
+                    "1": "Girl, come on",
+                    "0": "Nevermind..."
+                }
+              },
+              {
+                "key": "privatestuff",
+                "description": "track my privatestuff",
+                "follow_up_question": "Texture ?",
+                "buttons":{
+                    "2": "liquid",
+                    "1": "sticky",
+                    "0": "creamy"
+                },
+                "2ndfollow_up_question": "Color ?",
+                "2ndbuttons":{
+                    "2": "yellow",
+                    "1": "white",
+                    "0": "brown"
+                },
+                "reply": "Noted !"
+              },
+              {
+                "key": "stress",
+                "description": "Log times I felt stress or anxiety",
+                "follow_up_question" : "How do you feel ?",
+                "buttons":{
+                    "5": "slightly stressed",
+                    "4": "highly stressed",
+                    "3": "slightly anxious",
+                    "2": "highly anxious",
+                    "1": "overwhelmed",
+                    "0": "I'm having a panic attack"
+                },
+                "follow_up_replies": "Do you know the reason ?",
+                "reply": "Use your watch to do some breathing exercise"
+              }]
+    }
+        }
+    }
