@@ -6,27 +6,26 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 import json
 from datetime import datetime
 
-TOKEN = 'xxx'
-BOT_USERNAME: Final = '@xxx'
+TOKEN = 'xx'
+BOT_USERNAME: Final = '@xx'
 my_chat_id = 123456789
-
 
 # Connect to SQLite database
 conn = sqlite3.connect('feelings.db')
 cursor = conn.cursor()
-cursor.execute("CREATE TABLE IF NOT EXISTS command_logs (command TEXT, timestamp TEXT)")
+cursor.execute("CREATE TABLE IF NOT EXISTS command_logs (command TEXT, timestamp TEXT, reason TEXT)")
+
+# Load commands from JSON file
+with open('telegrambot/singleorders.json') as f:
+    commands_data = json.load(f)
+
 
 # Only respond to messages from my chat_id
 def echo(update: Update, context: CallbackContext) -> None:
     if update.message.chat_id == my_chat_id:
-        update.message.reply_text(update.message.text)
-
-# Load commands from JSON file
-with open('telegrambot\singleorders.json') as f:
-    commands_data = json.load(f)
-      
-# HANDLE SIMPLE COMMANDS
-async def simple_command(update: Update, context:CallbackContext):
+        update.message.reply_text(update.message.text)      
+# HANDLE COMMANDS
+async def handle_commands(update: Update, context:CallbackContext):
     # variables
     message = update.message.text
     command = message.split('/')[-1]  # Extract command from message
@@ -41,20 +40,11 @@ async def simple_command(update: Update, context:CallbackContext):
             # Log the command in the database
             cursor.execute("INSERT INTO command_logs (command, timestamp) VALUES (?, ?)", (command, current_time))
             conn.commit()
-            break
-
-# HANDLE COMPLEX COMMANDS
-async def complex_command(update: Update, context:CallbackContext):
-    # variables
-    message = update.message.text
-    command = message.split('/')[-1]  # Extract command from message
-    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-    # Check if the command exists in the JSON data
+            return
+        
     for cmd in commands_data['single_orders']['complex']['commands']:
         if cmd['key'] == command:
             # Reply with the corresponding message
-            await update.message.reply_text(text=cmd['follow_up_question'])
             follow_up_question = cmd.get('follow_up_question')
             if follow_up_question:
                 buttons = [[value for value in cmd['buttons'].values()]]
@@ -68,8 +58,10 @@ async def complex_command(update: Update, context:CallbackContext):
                                (command, current_time, user_response))
                 conn.commit()
 
-                await update.message.reply_text(text=cmd['reply'])
-                break
+            await update.message.reply_text(text=cmd['reply'])
+            return
+        
+    await update.message.reply_text("Sorry, I couldn't find that command.") 
 
             
 
@@ -104,8 +96,7 @@ if __name__ == '__main__':
     print('Starting bot...')
     app = Application.builder().token(TOKEN).build()
 
-    app.add_handler(MessageHandler(filters.COMMAND, simple_command))
-    app.add_handler(MessageHandler(filters.COMMAND, complex_command))
+    app.add_handler(MessageHandler(filters.COMMAND, handle_commands))
 
     # Messages
     app.add_handler(MessageHandler(filters.TEXT, handle_message))

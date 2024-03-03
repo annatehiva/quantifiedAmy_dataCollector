@@ -139,3 +139,33 @@ if __name__ == '__main__':
     #Polls the bot
     print('Polling...')
     app.run_polling(poll_interval=3)
+
+
+
+# HANDLE COMPLEX COMMANDS
+async def complex_command(update: Update, context:CallbackContext):
+    # variables
+    message = update.message.text
+    command = message.split('/')[-1]  # Extract command from message
+    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    # Check if the command exists in the JSON data
+    for cmd in commands_data['single_orders']['complex']['commands']:
+        if cmd['key'] == command:
+            # Reply with the corresponding message
+            await update.message.reply_text(text=cmd['follow_up_question'])
+            follow_up_question = cmd.get('follow_up_question')
+            if follow_up_question:
+                buttons = [[value for value in cmd['buttons'].values()]]
+                custom_markup = ReplyKeyboardMarkup(buttons, one_time_keyboard=True)
+                await update.message.reply_text(follow_up_question, reply_markup=custom_markup)
+
+
+                # Retrieve user's reply and add to database
+                user_response = update.message.text
+                cursor.execute("INSERT INTO command_logs (command, timestamp, reason) VALUES (?, ?, ?)",
+                               (command, current_time, user_response))
+                conn.commit()
+
+                await update.message.reply_text(text=cmd['reply'])
+                break
