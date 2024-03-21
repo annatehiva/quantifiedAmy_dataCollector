@@ -1,3 +1,17 @@
+conn = psycopg2.connect(
+    dbname=os.getenv('PG_DBNAME'),
+    user=os.getenv('PG_USER'),
+    password=os.getenv('PG_PASSWORD'),
+    host=os.getenv('PG_HOST'),
+    port=os.getenv('PG_PORT')
+)
+cursor = conn.cursor()
+# Connect to SQLite database TO REPLACE !!!
+conn = sqlite3.connect('feelings.db')
+cursor = conn.cursor()
+cursor.execute("CREATE TABLE IF NOT EXISTS command_logs (command TEXT, timestamp TEXT, reason TEXT)")
+
+
 from typing import Final
 import sqlite3
 from telegram import Update, Bot

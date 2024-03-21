@@ -1,7 +1,7 @@
 import os
 from typing import Final
 from telegram import ReplyKeyboardMarkup
-import sqlite3
+import psycopg2
 from telegram import Update, Bot
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackContext
 import json
@@ -9,19 +9,26 @@ from datetime import datetime
 from dotenv import load_dotenv
 
 load_dotenv()
+# Private infos
 TOKEN = os.getenv('TOKEN')
 BOT_USERNAME: Final = os.getenv('Bot')
 my_chat_id = os.getenv('my_chat_id')
 
-# Connect to SQLite database
-conn = sqlite3.connect('feelings.db')
+# Connection to database
+conn = psycopg2.connect(
+    dbname=os.getenv('PG_DBNAME'),
+    user=os.getenv('PG_USER'),
+    password=os.getenv('PG_PASSWORD'),
+    host=os.getenv('PG_HOST'),
+    port=os.getenv('PG_PORT')
+)
 cursor = conn.cursor()
 cursor.execute("CREATE TABLE IF NOT EXISTS command_logs (command TEXT, timestamp TEXT, reason TEXT)")
+
 
 # Load commands from JSON file
 with open('telegrambot/singleorders.json') as f:
     commands_data = json.load(f)
-
 
 # Only respond to messages from my chat_id
 def echo(update: Update, context: CallbackContext) -> None:
@@ -42,7 +49,7 @@ async def handle_commands(update: Update, context:CallbackContext):
             await update.message.reply_text(text=cmd['reply'])
             
             # Log the command in the database
-            cursor.execute("INSERT INTO command_logs (command, timestamp) VALUES (?, ?)", (command, current_time))
+            cursor.execute("INSERT INTO command_logs (command, timestamp) VALUES (%s, %s)", (command, current_time))
             conn.commit()
             return
         
@@ -119,7 +126,7 @@ async def handle_complex_response(update: Update, context: CallbackContext):
 
         # Store the user's response and reason in the database
         reason = follow_up_replies[user_response]
-        cursor.execute("INSERT INTO command_logs (command, timestamp, reason) VALUES (?, ?, ?)",
+        cursor.execute("INSERT INTO command_logs (command, timestamp, reason) VALUES (%s, %s, %s)",
                        (command, timestamp, reason))
         conn.commit()
 
