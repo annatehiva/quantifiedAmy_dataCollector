@@ -1,30 +1,30 @@
+# My code : 
+# What's not working: the 'specific case' case, comp rebound not added.
 import os
 from typing import Final
 from telegram import ReplyKeyboardMarkup
 import psycopg2
 from telegram import Update, Bot
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackContext
+from telegram.ext import Application, MessageHandler, filters, ContextTypes, CallbackContext, CallbackQueryHandler
 import json
 from datetime import datetime
 from dotenv import load_dotenv
 
 load_dotenv()
-# Private infos
+
 TOKEN = os.getenv('TOKEN')
 BOT_USERNAME: Final = os.getenv('Bot')
 my_chat_id = os.getenv('my_chat_id')
 
-# Connection to database
-conn = psycopg2.connect(
-    dbname=os.getenv('PG_DBNAME'),
-    user=os.getenv('PG_USER'),
-    password=os.getenv('PG_PASSWORD'),
-    host=os.getenv('PG_HOST'),
-    port=os.getenv('PG_PORT')
-)
+DB_CONFIG = {
+    'dbname': os.getenv('PG_DBNAME'),
+    'user': os.getenv('PG_USER'),
+    'password': os.getenv('PG_PASSWORD'),
+    'host': os.getenv('PG_HOST'),
+    'port': os.getenv('PG_PORT')
+}
+conn = psycopg2.connect(**DB_CONFIG)
 cursor = conn.cursor()
-cursor.execute("CREATE TABLE IF NOT EXISTS command_logs (command TEXT, timestamp TEXT, reason TEXT)")
-
 
 # Load commands from JSON file
 with open('telegrambot/singleorders.json') as f:
@@ -35,128 +35,109 @@ def echo(update: Update, context: CallbackContext) -> None:
     if update.message.chat_id == my_chat_id:
         update.message.reply_text(update.message.text)    
 
-# HANDLE COMMANDS
-async def handle_commands(update: Update, context:CallbackContext):
-    # variables
-    message = update.message.text
-    command = message.split('/')[-1]  # Extract command from message
+def create_table_if_not_exists(table_name, columns):
+    create_table_query = f"CREATE TABLE IF NOT EXISTS {table_name} ({columns})"
+    cursor.execute(create_table_query)
+
+# Command handlers
+async def handle_simple_commands(update: Update, context: CallbackContext):
+    command_received = update.message.text
+    user_command = command_received.split('/')[-1]
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    # Check if the command exists in the JSON data
+    for command_data in commands_data['single_orders']['simple']['commands']:
+        key_simple = command_data['key']
+        create_table_if_not_exists(key_simple, "timestamp TEXT, command TEXT")
+
     for cmd in commands_data['single_orders']['simple']['commands']:
-        if cmd['key'] == command:
-            # Reply with the corresponding message
+        key = cmd['key']
+        if key == user_command:
             await update.message.reply_text(text=cmd['reply'])
-            
-            # Log the command in the database
-            cursor.execute("INSERT INTO command_logs (command, timestamp) VALUES (%s, %s)", (command, current_time))
+            cursor.execute(f"INSERT INTO {key} (timestamp, command) VALUES (%s, %s)", (current_time, user_command))
             conn.commit()
             return
-        
-    # for cmd in commands_data['single_orders']['complex']['commands']:
-    #     if cmd['key'] == command:
-    #         context.user_data['command'] = command
-    #         context.user_data['timestamp'] = current_time
-    #         # Reply with the corresponding message
-    #         follow_up_question = cmd.get('follow_up_question')
-    #         if follow_up_question:
-    #             buttons = [[value for value in cmd['buttons'].values()]]
-    #             custom_markup = ReplyKeyboardMarkup(buttons, one_time_keyboard=True)
-    #             await update.message.reply_text(follow_up_question, reply_markup=custom_markup)
 
+    await handle_complex_commands(update, context)
 
-    #             # Retrieve user's reply and add to database
-    #             user_response =  context.user_data.get('response')
-    #             cursor.execute("INSERT INTO command_logs (command, timestamp, reason) VALUES (?, ?, ?)",
-    #                            (command, current_time, user_response))
-    #             conn.commit()
+async def handle_follow_up_question(cmd, update):
+    follow_up_question = cmd.get('follow_up_question')
+    if follow_up_question:
+        buttons = [[value for value in cmd['buttons'].values()]]
+        custom_markup = ReplyKeyboardMarkup(buttons, one_time_keyboard=True)
+        await update.message.reply_text(follow_up_question, reply_markup=custom_markup)  
 
-    #         return
-        
-    await update.message.reply_text("Sorry, I couldn't find that command.") 
+async def handle_complex_commands(update: Update, context: CallbackContext):
+    command_received = update.message.text
+    user_command = command_received.split('/')[-1]
 
-# async def handle_complex_response(update: Update, context: CallbackContext):
-#     # Retrieve the user's response
-#     user_response = update.message.text
-    
-#     # Retrieve command and timestamp from the context
-#     command = context.user_data.get('command')
-#     timestamp = context.user_data.get('timestamp')
-        
-#     # Retrieve the follow-up replies from the JSON data
-#     follow_up_replies = None
-#     for cmd in commands_data['single_orders']['complex']['commands']:
-#         if cmd['key'] == command:
-#             follow_up_replies = cmd.get('follow_up_replies')
-#             break
-#         # If follow-up replies are found and the user's response is valid, send the corresponding follow-up reply
-#         if follow_up_replies and user_response in follow_up_replies:
-#             follow_up_reply = follow_up_replies[user_response]
-#             await update.message.reply_text(follow_up_reply)
+    for command_group in commands_data['single_orders']['complex']['commands']:
+        for command_type, commands_list in command_group.items():
+            rebound_type = command_type
+            for command_info in commands_list:
+                key_value = command_info['key']
+                if rebound_type == 'no_rebound':
+                    create_complex_table = f"CREATE TABLE IF NOT EXISTS {key_value} (timestamp TEXT, command TEXT, reason TEXT)"
+                elif rebound_type == 'optional_rebound':
+                    create_complex_table = f"CREATE TABLE IF NOT EXISTS {key_value} (timestamp TEXT, command TEXT, reason TEXT, details TEXT)"
+                elif rebound_type == 'compulsory_rebound':
+                    if key_value == 'privatestuff':
+                        create_complex_table = f"CREATE TABLE IF NOT EXISTS {key_value} (timestamp TEXT, command TEXT, texture TEXT, color TEXT)"
+                    elif key_value == 'stress':
+                        create_complex_table = f"CREATE TABLE IF NOT EXISTS {key_value} (timestamp TEXT, command TEXT, feeling TEXT, reason TEXT)"
+                cursor.execute(create_complex_table)
 
-#     # Store the user's response in the database
-#         cursor.execute("INSERT INTO command_logs (command, timestamp, reason) VALUES (?, ?, ?)",
-#                        (command, timestamp, user_response))
-#         conn.commit()
-        
-#         # Optionally, you can provide a reply acknowledging the user's response
-#         await update.message.reply_text("Your response has been recorded.")
-#     else:
-#         await update.message.reply_text("Sorry, I couldn't process your response.")
+                # Checking if the user command matches the current key_complex
+                if user_command == key_value:
+                    for cmd in command_group.get(rebound_type, []):
+                        if cmd['key'] == user_command:
+                            await handle_follow_up_question(cmd, update)
+                            return
 
-async def handle_complex_response(update: Update, context: CallbackContext):
-    # Retrieve the user's response
+    if not command_received:
+        await update.message.reply_text("Command not found.")  
+
+async def handle_complex_responses(update: Update, context: CallbackContext):
     user_response = update.message.text
+    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
-    # Retrieve command and timestamp from the context
-    command = context.user_data.get('command')
-    timestamp = context.user_data.get('timestamp')
-        
-    # Retrieve the follow-up replies from the JSON data
-    follow_up_replies = None
-    for cmd in commands_data['single_orders']['complex']['commands']:
-        if cmd['key'] == command:
-            follow_up_replies = cmd.get('follow_up_replies')
-            break
-    
-    # If follow-up replies are found and the user's response is valid, send the corresponding follow-up reply
-    if follow_up_replies and user_response in follow_up_replies:
-        follow_up_reply = follow_up_replies[user_response]
-        await update.message.reply_text(follow_up_reply)
+    for command_info in commands_data['single_orders']['complex']['commands']:
+        for command_group in command_info.values():
+            for command in command_group:
+                key = command['key']
+                buttons = command.get('buttons', {})
+                follow_up_replies = command.get('follow_up_replies', {})
 
-        # Store the user's response and reason in the database
-        reason = follow_up_replies[user_response]
-        cursor.execute("INSERT INTO command_logs (command, timestamp, reason) VALUES (%s, %s, %s)",
-                       (command, timestamp, reason))
-        conn.commit()
+                for button_key, button_value in buttons.items():
+                    if user_response == button_value:
+                        follow_up_reply = follow_up_replies.get(button_key, "Noted !")
+                        await update.message.reply_text(follow_up_reply)
 
-        
-        # Optionally, you can provide a reply acknowledging the user's response
-        await update.message.reply_text("Your response has been recorded.")
-    else:
-        await update.message.reply_text("Sorry, I couldn't process your response.")
+                        # Log the command in the database
+                        cursor.execute(f"INSERT INTO {key} (timestamp, command, reason, details) VALUES (%s, %s, %s, %s)",
+                                       (current_time, key, user_response, None))
+                        conn.commit()
+                        return
+
+    await update.message.reply_text("Sorry, I couldn't process your response.")
 
 #  Handle unknown messages:
 def handle_response(text:str) -> str:
     return 'I am sorry, I do not understand.'
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    message_type: str = update.message.chat.type
-    text: str = update.message.text
+    message_type = update.message.chat.type
+    text = update.message.text
 
     print(f'User ({update.message.chat.id}) in {message_type}: "{text}"')
 
-    if message_type == 'group':
-        if BOT_USERNAME in text:
-            new_text: str = text.replace(BOT_USERNAME, '').strip()
-            response: str = handle_response(new_text)
-        else:
-            return
+    if message_type == 'group' and BOT_USERNAME in text:
+        new_text = text.replace(BOT_USERNAME, '').strip()
+        response = handle_response(new_text)
     else:
-        response: str = handle_response(text)
-    
+        response = handle_response(text)
 
     print('Bot', response)
     await update.message.reply_text(response)
+
 async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f'Update {update} caused error {context.error}')
 
@@ -165,8 +146,15 @@ if __name__ == '__main__':
     app = Application.builder().token(TOKEN).build()
 
     # Commands
-    app.add_handler(MessageHandler(filters.COMMAND, handle_commands))
-    # app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_complex_response))
+    simple_command_handler = MessageHandler(filters.COMMAND, handle_simple_commands)
+    app.add_handler(simple_command_handler)
+
+    complex_command_handler = MessageHandler(filters.COMMAND, handle_complex_commands)
+    app.add_handler(complex_command_handler)
+
+    complex_response_handler = MessageHandler(filters.TEXT & ~filters.COMMAND, handle_complex_responses)
+    app.add_handler(complex_response_handler)
+
     # Messages
     app.add_handler(MessageHandler(filters.TEXT, handle_message))
     # Errors
