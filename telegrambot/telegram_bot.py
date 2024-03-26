@@ -81,7 +81,7 @@ async def handle_complex_commands(update: Update, context: CallbackContext):
                     create_complex_table = f"CREATE TABLE IF NOT EXISTS {key_value} (timestamp TEXT, command TEXT, reason TEXT, details TEXT)"
                 elif rebound_type == 'compulsory_rebound':
                     if key_value == 'privatestuff':
-                        create_complex_table = f"CREATE TABLE IF NOT EXISTS {key_value} (timestamp TEXT, command TEXT, texture TEXT, color TEXT)"
+                        create_complex_table = f"CREATE TABLE IF NOT EXISTS {key_value} (timestamp TEXT, command TEXT, tex TEXT, col TEXT)"
                     elif key_value == 'stress':
                         create_complex_table = f"CREATE TABLE IF NOT EXISTS {key_value} (timestamp TEXT, command TEXT, feeling TEXT, reason TEXT)"
                 cursor.execute(create_complex_table)
@@ -109,16 +109,61 @@ async def handle_complex_responses(update: Update, context: CallbackContext):
 
                 for button_key, button_value in buttons.items():
                     if user_response == button_value:
-                        follow_up_reply = follow_up_replies.get(button_key, "Noted !")
-                        await update.message.reply_text(follow_up_reply)
+                        if button_key == '0':
+                            second_follow_up_question = command.get('2ndfollow_up_question')
 
-                        # Log the command in the database
-                        cursor.execute(f"INSERT INTO {key} (timestamp, command, reason, details) VALUES (%s, %s, %s, %s)",
+                            context.user_data['second_follow_up_question'] = second_follow_up_question
+                            context.user_data['key'] = key
+                            context.user_data['reason'] = 'amy'
+                            
+                            await handle_rebound_responses(update, context)
+                            return
+                        else:
+                            follow_up_reply = follow_up_replies.get(button_key,"Noted!")
+                            await update.message.reply_text(follow_up_reply)
+                            # Log the command in the database
+                            cursor.execute(f"INSERT INTO {key} (timestamp, command, reason, details) VALUES (%s, %s, %s, %s)",
                                        (current_time, key, user_response, None))
-                        conn.commit()
-                        return
+                            conn.commit()
+                            return
 
     await update.message.reply_text("Sorry, I couldn't process your response.")
+
+async def handle_rebound_responses(update: Update, context: CallbackContext):
+    key = context.user_data.get('key')
+    reason = context.user_data.get('reason')
+    second_follow_up_question = context.user_data.get('second_follow_up_question')
+    print(key)
+    print(reason)
+    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    reply = 'test'
+    # if rebound_response:
+    if key == 'privatestuff':
+            await update.message.reply_text(second_follow_up_question)
+            rebound_response = update.message.text 
+            cursor.execute(f"INSERT INTO {key} (timestamp, command, text, col) VALUES (%s, %s, %s, %s)",
+                   (current_time, key, reason, rebound_response))
+            conn.commit()
+            await update.message.reply_text(reply)
+            return
+        
+    elif key == 'stress':
+            await update.message.reply_text(second_follow_up_question)
+            rebound_response = update.message.text 
+            cursor.execute(f"INSERT INTO {key} (timestamp, command, feeling, reason) VALUES (%s, %s, %s, %s)",
+                   (current_time, key, reason, rebound_response))
+            conn.commit()
+            await update.message.reply_text('truc')
+            return 
+    else:
+            await update.message.reply_text(second_follow_up_question)
+            rebound_response = update.message.text 
+            print(rebound_response)
+            cursor.execute(f"INSERT INTO {key} (timestamp, command, reason, details) VALUES (%s, %s, %s, %s)",
+                   (current_time, key, reason, rebound_response))
+            conn.commit()
+            await update.message.reply_text('testouille')
+            return
 
 #  Handle unknown messages:
 def handle_response(text:str) -> str:
@@ -155,6 +200,9 @@ if __name__ == '__main__':
     complex_response_handler = MessageHandler(filters.TEXT & ~filters.COMMAND, handle_complex_responses)
     app.add_handler(complex_response_handler)
 
+    complex_command_handler = MessageHandler(filters.TEXT & ~filters.COMMAND, handle_rebound_responses)
+    app.add_handler(complex_command_handler)
+
     # Messages
     app.add_handler(MessageHandler(filters.TEXT, handle_message))
     # Errors
@@ -163,4 +211,3 @@ if __name__ == '__main__':
     #Polls the bot
     print('Polling...')
     app.run_polling(poll_interval=3)
-
