@@ -28,26 +28,33 @@ cursor = conn.cursor()
 with open('telegrambot/singleorders.json') as f:
     data = json.load(f)
 
-# Only respond to messages from my chat_id
+# Only reply to messages from my chat_id
 def echo(update: Update, context: CallbackContext) -> None:
     if update.message.chat_id == my_chat_id:
         update.message.reply_text(update.message.text)    
 
-def create_table_if_not_exists(table_name, columns):
-    create_table_query = f"CREATE TABLE IF NOT EXISTS {table_name} ({columns})"
+# Database gestion
+def create_table_if_not_exists(table_name, data):
+    create_table_query = f"CREATE TABLE IF NOT EXISTS {table_name} ({data})"
     cursor.execute(create_table_query)
+    conn.commit()
+def insert_data(table_name, data):
+    insert_query = f"INSERT INTO {table_name} VALUES %s"
+    cursor.execute(insert_query, (data,))
+    conn.commit()
 
-simple_commands = data["single_orders"]["commands"]["simple"]
-
-no_rebound_commands = data["single_orders"]["commands"]["no_rebound"]
-
-rebound_commands = data["single_orders"]["commands"]['rebound']
 
 def find_key(dictionary, value):
     for key, val in dictionary.items():
         if val == value:
             return key
     return None
+
+simple_commands = data["single_orders"]["commands"]["simple"]
+
+no_rebound_commands = data["single_orders"]["commands"]["no_rebound"]
+
+rebound_commands = data["single_orders"]["commands"]['rebound']
 
 # hub to process user's commands
 async def hub_command(update: Update, context: ContextTypes) -> int:
@@ -58,8 +65,7 @@ async def hub_command(update: Update, context: ContextTypes) -> int:
         if user_command == simple['key']: #if user's command = simple -> END
             context.user_data['command'] = None
             create_table_if_not_exists(user_command, "timestamp TEXT, command TEXT")
-            cursor.execute(f"INSERT INTO {user_command} (timestamp, command) VALUES (%s, %s)", (current_time, user_command))
-            conn.commit()
+            insert_data(user_command, (current_time, user_command))
             await update.message.reply_text(simple['reply'])
             return
     for no_rebound in no_rebound_commands:
@@ -78,6 +84,7 @@ async def hub_command(update: Update, context: ContextTypes) -> int:
             return
     await update.message.reply_text('Unknown command')
 
+# if no_rebound/rebound: sends follow_up_question + custom Keyboard
 async def pannel_command(update: Update, context: ContextTypes, ) -> int:
     rebound = context.user_data['command']
     button_values = list(rebound['buttons'].values())
@@ -85,48 +92,52 @@ async def pannel_command(update: Update, context: ContextTypes, ) -> int:
     markup = ReplyKeyboardMarkup(buttons, one_time_keyboard=True)
     await update.message.reply_text(rebound['follow_up_question'],reply_markup=markup)
 
+# manages state of conversation
 async def handle_button_click(update: Update, context: ContextTypes) -> None:
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     user_response = update.message.text
-    state = context.user_data['state']
+    if not context.user_data.get("state"):
+        await update.message.reply_text('Sorry, this message cannot be processed.')
     response = context.user_data['command']
+    state = context.user_data['state']
     if not response:
         return 
+
     if state == 'final': #insert rebound command into db
         key = context.user_data['key']
         answer1 = context.user_data['answer1']
-        cursor.execute(f"INSERT INTO {key} (timestamp, command, answer1, answer2) VALUES (%s, %s, %s, %s)",
-            (current_time, key, answer1, user_response))
-        conn.commit()
+        insert_data(key, (current_time, key, answer1, user_response))
         await update.message.reply_text(response['reply'])
         context.user_data['command'] = None
+        context.user_data['state'] = None
         return
-    if state == 'no_rebound':         
+    if state == 'no_rebound':        
         await no_rebound_command(update, context)   
         return
-    elif state == 'rebound':
+    if state == 'rebound':
         await rebound_command(update, context)
 
-    
+    if context.user_data['state'] == None :
+        await update.message.reply_text('nope')
+
+# manages automatic or custom reply
 async def no_rebound_command(update: Update, context: ContextTypes) -> None:
     user_response = update.message.text
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     response = context.user_data['command']
     key = context.user_data['command']['key']
     if find_key(response['buttons'], user_response) == None:
-        cursor.execute(f"INSERT INTO {key} (timestamp, command, reason) VALUES (%s, %s, %s)",
-            (current_time, key, user_response))
-        conn.commit()
+        insert_data(key, (current_time, key, user_response))
         await update.message.reply_text(response['reply'])
+        context.user_data['state'] = None
         return
               
     key_find = find_key(response['buttons'], user_response)
     response = response['follow_up_replies']
-    cursor.execute(f"INSERT INTO {key} (timestamp, command, reason) VALUES (%s, %s, %s)",
-        (current_time, key, user_response))
-    conn.commit()
+    insert_data(key, (current_time, key, user_response))
     await update.message.reply_text(response[key_find])
     context.user_data['command'] = None
+    context.user_data['state'] = None
     return
 
 async def rebound_command(update: Update, context: ContextTypes) -> None:
@@ -150,22 +161,6 @@ async def rebound_command(update: Update, context: ContextTypes) -> None:
     await update.message.reply_text(response['2ndfollow_up_question'])
     return
 
-#  Handle unknown messages:
-def handle_response(text:str) -> str:
-    return 'I am sorry, I do not understand.'
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    message_type = update.message.chat.type
-    text = update.message.text
-    print(f'User ({update.message.chat.id}) in {message_type}: "{text}"')
-
-    if message_type == 'group' and BOT_USERNAME in text:
-        new_text = text.replace(BOT_USERNAME, '').strip()
-        response = handle_response(new_text)
-    else:
-        response = handle_response(text)
-    print('Bot', response)
-    await update.message.reply_text(response)
-
 async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f'Update {update} caused error {context.error}')
 
@@ -178,9 +173,7 @@ def main() -> None:
     app.add_handler(MessageHandler(filters.COMMAND, hub_command))
 
     app.add_handler(MessageHandler(filters.TEXT, handle_button_click))
-    # Messages
-    app.add_handler(MessageHandler(filters.TEXT, handle_message))
-    # Errors
+
     app.add_error_handler(error)
    
     app.run_polling(allowed_updates=Update.ALL_TYPES)
