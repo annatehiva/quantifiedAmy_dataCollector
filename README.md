@@ -1,5 +1,6 @@
 # Telegram Bot Project: Quantified Self
 This project is a Python Telegram bot designed to track life-habits. It handles commands and interactions with users based on predefined commands and responses that get stored into a database. Quantified self: self-tracking with technology.
+Note: original commits cannot be accessed here due to privacy reasons.
 
 ## Installation
 1. Create a Telegram Bot: https://core.telegram.org/bots/tutorial and ensure you have a PostgreSQL database set up.
