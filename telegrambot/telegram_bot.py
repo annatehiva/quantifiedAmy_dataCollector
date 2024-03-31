@@ -3,7 +3,7 @@ from typing import Final
 from telegram import ReplyKeyboardMarkup
 import psycopg2
 from telegram import Update, Bot
-from telegram.ext import Application, MessageHandler, filters, ContextTypes, CallbackContext, CallbackQueryHandler
+from telegram.ext import Application, MessageHandler, filters, ContextTypes, CallbackContext
 import json
 from datetime import datetime
 from dotenv import load_dotenv
@@ -89,7 +89,7 @@ async def pannel_command(update: Update, context: ContextTypes, ) -> int:
     rebound = context.user_data['command']
     button_values = list(rebound['buttons'].values())
     buttons = [button_values]
-    markup = ReplyKeyboardMarkup(buttons, one_time_keyboard=True)
+    markup = ReplyKeyboardMarkup(buttons, one_time_keyboard=True, resize_keyboard=True)
     await update.message.reply_text(rebound['follow_up_question'],reply_markup=markup)
 
 # manages state of conversation
@@ -148,7 +148,7 @@ async def rebound_command(update: Update, context: ContextTypes) -> None:
     if response.get('2ndbuttons'):
         button_values = list(response['2ndbuttons'].values())
         buttons = [button_values]
-        markup = ReplyKeyboardMarkup(buttons, one_time_keyboard=True)
+        markup = ReplyKeyboardMarkup(buttons, one_time_keyboard=True, resize_keyboard=True)
         await update.message.reply_text(response['2ndfollow_up_question'], reply_markup=markup)
         context.user_data['key'] = key
         context.user_data['answer1'] = user_response
