@@ -57,7 +57,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         "Send /cancel to stop talking to me.\n\n"
         "Did you wake up by yourself ?",
         reply_markup=ReplyKeyboardMarkup(
-            reply_keyboard, one_time_keyboard=True, input_field_placeholder="Boy or Girl?"
+            reply_keyboard, one_time_keyboard=True, input_field_placeholder="Yes or No?"
         ),
     )
 
@@ -118,9 +118,8 @@ async def skip_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
 
 async def bio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Stores the info about the user and ends the conversation."""
     user = update.message.from_user
-    await update.message.reply_text("Thank you! I hope we can talk again some day.")
+    await update.message.reply_text("Ok babe, see you later and have a good day !")
 
     return ConversationHandler.END
 
@@ -144,8 +143,8 @@ def main() -> None:
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("/awake", start)],
         states={
-            WAKE_UP: [MessageHandler(filters.Regex("^(Yes|No)$"), gender)],
-            ASLEEP_TIME: [MessageHandler(filters.PHOTO, photo), CommandHandler("skip", skip_photo)],
+            WAKE_UP: [MessageHandler(filters.Regex("^(Yes|No)$"), asleep_time)],
+            ASLEEP_TIME: [MessageHandler(filters.TEXT, photo), CommandHandler("skip", skip_photo)],
             LOCATION: [
                 MessageHandler(filters.LOCATION, location),
                 CommandHandler("skip", skip_location),
