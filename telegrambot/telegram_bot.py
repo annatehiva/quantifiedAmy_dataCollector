@@ -2,7 +2,7 @@ import os
 from typing import Final
 from telegram import ReplyKeyboardMarkup
 import psycopg2
-from telegram import Update, Bot
+from telegram import Update
 from telegram.ext import Application, MessageHandler, filters, ContextTypes, CallbackContext
 import json
 from datetime import datetime
@@ -50,41 +50,41 @@ def find_key(dictionary, value):
             return key
     return None
 
-simple_commands = data["single_orders"]["commands"]["simple"]
-
 no_rebound_commands = data["single_orders"]["commands"]["no_rebound"]
 
-rebound_commands = data["single_orders"]["commands"]['rebound']
+rebound_commands = data["single_orders"]["commands"]["rebound"]
+
+double_rebound_commands = data["single_orders"]["commands"]["double_rebound"]
 
 # hub to process user's commands
 async def hub_command(update: Update, context: ContextTypes) -> int:
     command_received = update.message.text
     user_command = command_received[1:] 
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')    
-    for  simple in simple_commands:
-        if user_command == simple['key']: #if user's command = simple -> END
+    for  no_rebound in no_rebound_commands:
+        if user_command == no_rebound['key']: #if user's command = no_rebound -> END
             context.user_data['command'] = None
             create_table_if_not_exists(user_command, "timestamp TEXT, command TEXT")
             insert_data(user_command, (current_time, user_command))
-            await update.message.reply_text(simple['reply'])
-            return
-    for no_rebound in no_rebound_commands:
-        if user_command == no_rebound['key']: #if user's command = no_rebound -> redirection
-            context.user_data['command'] = no_rebound
-            context.user_data['state'] = 'no_rebound'
-            create_table_if_not_exists(user_command, "timestamp TEXT, command TEXT, reason TEXT")
-            await pannel_command(update,context)
+            await update.message.reply_text(no_rebound['reply'])
             return
     for rebound in rebound_commands:
         if user_command == rebound['key']: #if user's command = rebound -> redirection
             context.user_data['command'] = rebound
             context.user_data['state'] = 'rebound'
+            create_table_if_not_exists(user_command, "timestamp TEXT, command TEXT, reason TEXT")
+            await pannel_command(update,context)
+            return
+    for double_rebound in double_rebound_commands:
+        if user_command == double_rebound['key']: #if user's command = double_rebound -> redirection
+            context.user_data['command'] = double_rebound
+            context.user_data['state'] = 'double_rebound'
             create_table_if_not_exists(user_command, "timestamp TEXT, command TEXT, answer1 TEXT, answer2 TEXT")
             await pannel_command(update,context)
             return
     await update.message.reply_text('Unknown command')
 
-# if no_rebound/rebound: sends follow_up_question + custom Keyboard
+# if rebound/double_rebound: sends follow_up_question + custom Keyboard
 async def pannel_command(update: Update, context: ContextTypes, ) -> int:
     rebound = context.user_data['command']
     button_values = list(rebound['buttons'].values())
@@ -103,7 +103,7 @@ async def handle_button_click(update: Update, context: ContextTypes) -> None:
     if not response:
         return 
 
-    if state == 'final': #insert rebound command into db
+    if state == 'final': #insert double_rebound command into db
         key = context.user_data['key']
         answer1 = context.user_data['answer1']
         insert_data(key, (current_time, key, answer1, user_response))
@@ -111,17 +111,17 @@ async def handle_button_click(update: Update, context: ContextTypes) -> None:
         context.user_data['command'] = None
         context.user_data['state'] = None
         return
-    if state == 'no_rebound':        
-        await no_rebound_command(update, context)   
+    if state == 'rebound':        
+        await rebound_command(update, context)   
         return
-    if state == 'rebound':
-        await rebound_command(update, context)
+    if state == 'double_rebound':
+        await double_rebound_command(update, context)
 
     if context.user_data['state'] == None :
         await update.message.reply_text('nope')
 
 # manages automatic or custom reply
-async def no_rebound_command(update: Update, context: ContextTypes) -> None:
+async def rebound_command(update: Update, context: ContextTypes) -> None:
     user_response = update.message.text
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     response = context.user_data['command']
@@ -140,7 +140,7 @@ async def no_rebound_command(update: Update, context: ContextTypes) -> None:
     context.user_data['state'] = None
     return
 
-async def rebound_command(update: Update, context: ContextTypes) -> None:
+async def double_rebound_command(update: Update, context: ContextTypes) -> None:
     user_response = update.message.text
     response = context.user_data['command']
     key = context.user_data['command']['key']

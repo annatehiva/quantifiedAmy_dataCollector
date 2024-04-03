@@ -1,7 +1,7 @@
 {
   "single_orders": {
     "commands": {
-      "simple": [
+      "no_rebound": [
         {
           "key": "stretch",
           "description": "Log times I stretched",
@@ -48,7 +48,7 @@
           "reply": "Yay, that's my healthy girl !"
         }
       ],
-      "no_rebound": [
+      "rebound": [
         {
           "key": "nap",
           "description": "Log naps",
@@ -149,7 +149,7 @@
         }
       ],
 
-      "rebound": [
+      "double_rebound": [
         {
           "key": "privatestuff",
           "description": "track my privatestuff",
