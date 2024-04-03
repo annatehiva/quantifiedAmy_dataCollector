@@ -3,7 +3,7 @@ from typing import Final
 from telegram import ReplyKeyboardMarkup
 import psycopg2
 from telegram import Update, Bot
-from telegram.ext import Application, MessageHandler, filters, ContextTypes, CallbackContext, CallbackQueryHandler
+from telegram.ext import Application, MessageHandler, filters, ContextTypes, CallbackContext
 import json
 from datetime import datetime
 from dotenv import load_dotenv
