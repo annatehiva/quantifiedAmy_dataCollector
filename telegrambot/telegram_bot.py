@@ -24,8 +24,13 @@ DB_CONFIG = {
 conn = psycopg2.connect(**DB_CONFIG)
 cursor = conn.cursor()
 
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Change the working directory to the directory containing singleorders.json
+os.chdir(script_dir)
+
 # Load commands from JSON file
-with open('telegrambot/singleorders.json') as f:
+with open('singleorders.json') as f:
     data = json.load(f)
 
 # Only reply to messages from my chat_id
