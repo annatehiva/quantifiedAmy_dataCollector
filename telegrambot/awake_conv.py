@@ -50,69 +50,80 @@ WAKE_UP, ASLEEP_TIME, LATE_REASONS, SLEEP_LATE = range(4)
 
 
 async def awake(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    reply_keyboard = [["Yes","No"]]
-
+    reply_keyboard = [["Natural","Bothered","Alarm"]]
+    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S') 
+    create_table_if_not_exists("awake","wake_up_time TEXT")
+    insert_data("awake",(current_time,))
     await update.message.reply_text(
-        "Hello Sunshine"
+        "Hello Sunshine\n\n"
         "Send /cancel to stop talking to me.\n\n"
         "Did you wake up by yourself ?",
         reply_markup=ReplyKeyboardMarkup(
-            reply_keyboard, one_time_keyboard=True, input_field_placeholder="Yes or No?"
+            reply_keyboard, one_time_keyboard=True
         ),
     )
-    
     return WAKE_UP
 
-
 async def asleep_time(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    user = update.message.from_user
-    await update.message.reply_text(
+    user = update.message.text
+    create_table_if_not_exists("way_I_woke_up","type TEXT")
+    if user == "Natural" or user == "Bothered" or user == "Alarm":
+        insert_data("way_I_woke_up",(user,))
+        await update.message.reply_text(
         "When did you fall asleep ?",
-        reply_markup=ReplyKeyboardRemove()
-    )
-
-    return ASLEEP_TIME
-
+        reply_markup=ReplyKeyboardRemove())
+        return ASLEEP_TIME
+    
+    await update.message.reply_text("Unknown answer, try again babe")
+    return WAKE_UP
 
 async def sleep_late(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    reply_keyboard = [["✨","🌿","🐼","👹","⚰️"]]
-    try:
-        user_sleep_time = int(update.message.from_user)
-        user_hour = user_sleep_time % 24
-        if user_hour < 0:
-            user_hour += 24
-        if user_hour < 8 or user_hour == 0:
-            await update.message.reply_text("Beauty sleep yay.")
-            await update.message.reply_text("What's your energy level this morning ?")
-            reply_markup=ReplyKeyboardMarkup(
-            reply_keyboard, one_time_keyboard=True
-        )
-            return SLEEP_LATE
-        elif user_hour >= 8:
-            await update.message.reply_text("Why ?")
-            return LATE_REASONS
-    except ValueError:
-        await update.message.reply_text("Please enter a correct number.")
+    user_hour = int(update.message.text)
+    answers = {5:"✨",4:"🌿",3:"🐼",2:"👹",1:"⚰️"}
+    reply_keyboard = [*[answers.values()]]
+    reply_keyboard = [[str(value) for value in answers.values()]]
+    context.user_data['answers'] = answers
 
-
+    create_table_if_not_exists("asleep_time","time TEXT, reasons TEXT")
+    if user_hour>24:
+        await update.message.reply_text("Invalid answer, try again babe")
+        return ASLEEP_TIME
+    if user_hour not in [20,21,22,23]:
+        context.user_data['user_hour'] = user_hour
+        await update.message.reply_text("Why ?")
+        return LATE_REASONS
+    else:
+        await update.message.reply_text("Beauty sleep yay.")
+        await update.message.reply_text("What's your energy level this morning ?", reply_markup=ReplyKeyboardMarkup(
+        reply_keyboard, one_time_keyboard=True
+        ))
+        insert_data("asleep_time",(user_hour,None))
+        return SLEEP_LATE
+    
 async def late_sleep_reasons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    reply_keyboard = [["✨","🌿","🐼","👹","⚰️"]]
-    user = update.message.from_user
+    answers = {5:"✨",4:"🌿",3:"🐼",2:"👹",1:"⚰️"}
+    reply_keyboard = [*[answers.values()]]
+    reply_keyboard = [[str(value) for value in answers.values()]]
+    context.user_data['answers'] = answers
+    user_hour = context.user_data['user_hour']
+    user = update.message.text
     await update.message.reply_text("Noted !")
-    await update.message.reply_text("What's your energy level this morning ?")
-    reply_markup=ReplyKeyboardMarkup(
+    await update.message.reply_text("What's your energy level this morning ?", reply_markup=ReplyKeyboardMarkup(
     reply_keyboard, one_time_keyboard=True
-        )
+    ))
+    insert_data("asleep_time",(user_hour, user))
     return SLEEP_LATE
 
 
 async def energy_levels(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    user = update.message.from_user
-    if user == "✨" or user == "🌿":
-        await update.message.reply_text("Great !")
-    if user == "🐼" or user == "👹" or user == "⚰️":
-        await update.message.reply_text("Oh no !")
-
+    create_table_if_not_exists("energy_levels","time TEXT, level INT")
+    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S') 
+    answers = context.user_data['answers']
+    user = update.message.text
+    for key, value in answers.items():
+        if user == value:
+            level = key
+    insert_data("energy_levels",(current_time,level))
     await update.message.reply_text(
         "Okay baby, see you later and have a great day !"
     )
@@ -120,31 +131,36 @@ async def energy_levels(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     return ConversationHandler.END
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    user = update.message.from_user
+    user = update.message.text
     await update.message.reply_text(
         "Bye! I hope we can talk again some day.", reply_markup=ReplyKeyboardRemove()
     )
 
     return ConversationHandler.END
 
+async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print(f'Update {update} caused error {context.error}')
+
+
 def main() -> None:
     application = Application.builder().token(TOKEN).build()
 
     # Add conversation handler with the states GENDER, PHOTO, LOCATION and BIO
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler("/awake", awake)],
+        entry_points=[CommandHandler("awake", awake)],
         states={
-            WAKE_UP: [MessageHandler(filters.Regex("^(Yes|No)$"), asleep_time)],
-            ASLEEP_TIME: [MessageHandler(filters.TEXT, sleep_late)],
-            LATE_REASONS: [MessageHandler(filters.TEXT, sleep_late)],
+            WAKE_UP: [MessageHandler(filters.Regex("^(Natural|Bothered|Alarm)$"), asleep_time)],
+            ASLEEP_TIME: [MessageHandler(filters.Regex("^([0-9]|1[0-9]|2[0-4])$"), sleep_late)],
+            LATE_REASONS: [MessageHandler(filters.TEXT, late_sleep_reasons)],
             SLEEP_LATE: [
-                MessageHandler(filters.TEXT, energy_levels)
+                MessageHandler(filters.Regex("^(✨|🌿|🐼|👹|⚰️)$"), energy_levels)
             ]
         },
         fallbacks=[CommandHandler("cancel", cancel)],
     )
 
     application.add_handler(conv_handler)
+    application.add_error_handler(error)
 
     # Run the bot until the user presses Ctrl-C
     application.run_polling(allowed_updates=Update.ALL_TYPES)
