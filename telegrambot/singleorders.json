@@ -1,7 +1,12 @@
 {
   "single_orders": {
     "commands": {
-      "no_rebound": [
+      "simple": [
+        {
+          "key": "up",
+          "description": "Log times I'm up",
+          "reply": "Noted !"
+        },
         {
           "key": "stretch",
           "description": "Log times I stretched",
@@ -48,7 +53,7 @@
           "reply": "Yay, that's my healthy girl !"
         }
       ],
-      "rebound": [
+      "no_rebound": [
         {
           "key": "nap",
           "description": "Log naps",
@@ -149,17 +154,17 @@
         }
       ],
 
-      "double_rebound": [
+      "rebound": [
         {
           "key": "privatestuff",
           "description": "track my privatestuff",
-          "follow_up_question": "Question 1?",
+          "follow_up_question": "Lol?",
           "buttons": {
             "2": "answer2",
             "1": "answer1",
             "0": "answer0"
           },
-          "2ndfollow_up_question": "Question 2 ?",
+          "2ndfollow_up_question": "Lol again ?",
           "2ndbuttons": {
             "2": "answer2",
             "1": "answer1",
