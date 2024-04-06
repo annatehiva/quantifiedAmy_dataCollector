@@ -3,6 +3,11 @@
     "commands": {
       "simple": [
         {
+          "key": "up",
+          "description": "Log times I'm up",
+          "reply": "Noted !"
+        },
+        {
           "key": "stretch",
           "description": "Log times I stretched",
           "reply": "Yay, good to hear !"
