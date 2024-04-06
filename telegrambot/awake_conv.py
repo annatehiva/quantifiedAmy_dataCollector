@@ -46,10 +46,10 @@ def insert_data(table_name, data):
     conn.commit()
 
 
-WAKE_UP, ASLEEP_TIME, LOCATION, BIO = range(4)
+WAKE_UP, ASLEEP_TIME, LATE_REASONS, SLEEP_LATE = range(4)
 
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def awake(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     reply_keyboard = [["Yes","No"]]
 
     await update.message.reply_text(
@@ -60,7 +60,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             reply_keyboard, one_time_keyboard=True, input_field_placeholder="Yes or No?"
         ),
     )
-
+    
     return WAKE_UP
 
 
@@ -74,58 +74,52 @@ async def asleep_time(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     return ASLEEP_TIME
 
 
-async def photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Stores the photo and asks for a location."""
+async def sleep_late(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    reply_keyboard = [["✨","🌿","🐼","👹","⚰️"]]
+    try:
+        user_sleep_time = int(update.message.from_user)
+        user_hour = user_sleep_time % 24
+        if user_hour < 0:
+            user_hour += 24
+        if user_hour < 8 or user_hour == 0:
+            await update.message.reply_text("Beauty sleep yay.")
+            await update.message.reply_text("What's your energy level this morning ?")
+            reply_markup=ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard=True
+        )
+            return SLEEP_LATE
+        elif user_hour >= 8:
+            await update.message.reply_text("Why ?")
+            return LATE_REASONS
+    except ValueError:
+        await update.message.reply_text("Please enter a correct number.")
+
+
+async def late_sleep_reasons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    reply_keyboard = [["✨","🌿","🐼","👹","⚰️"]]
     user = update.message.from_user
-    photo_file = await update.message.photo[-1].get_file()
-    await photo_file.download_to_drive("user_photo.jpg")
+    await update.message.reply_text("Noted !")
+    await update.message.reply_text("What's your energy level this morning ?")
+    reply_markup=ReplyKeyboardMarkup(
+    reply_keyboard, one_time_keyboard=True
+        )
+    return SLEEP_LATE
+
+
+async def energy_levels(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user = update.message.from_user
+    if user == "✨" or user == "🌿":
+        await update.message.reply_text("Great !")
+    if user == "🐼" or user == "👹" or user == "⚰️":
+        await update.message.reply_text("Oh no !")
+
     await update.message.reply_text(
-        "Gorgeous! Now, send me your location please, or send /skip if you don't want to."
+        "Okay baby, see you later and have a great day !"
     )
-
-    return LOCATION
-
-
-async def skip_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Skips the photo and asks for a location."""
-    user = update.message.from_user
-    await update.message.reply_text(
-        "I bet you look great! Now, send me your location please, or send /skip."
-    )
-
-    return LOCATION
-
-
-async def location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Stores the location and asks for some info about the user."""
-    user = update.message.from_user
-    user_location = update.message.location
-    await update.message.reply_text(
-        "Maybe I can visit you sometime! At last, tell me something about yourself."
-    )
-
-    return BIO
-
-
-async def skip_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Skips the location and asks for info about the user."""
-    user = update.message.from_user
-    await update.message.reply_text(
-        "You seem a bit paranoid! At last, tell me something about yourself."
-    )
-
-    return BIO
-
-
-async def bio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    user = update.message.from_user
-    await update.message.reply_text("Ok babe, see you later and have a good day !")
 
     return ConversationHandler.END
 
-
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Cancels and ends the conversation."""
     user = update.message.from_user
     await update.message.reply_text(
         "Bye! I hope we can talk again some day.", reply_markup=ReplyKeyboardRemove()
@@ -133,23 +127,19 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     return ConversationHandler.END
 
-
 def main() -> None:
-    """Run the bot."""
-    # Create the Application and pass it your bot's token.
-    application = Application.builder().token("TOKEN").build()
+    application = Application.builder().token(TOKEN).build()
 
     # Add conversation handler with the states GENDER, PHOTO, LOCATION and BIO
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler("/awake", start)],
+        entry_points=[CommandHandler("/awake", awake)],
         states={
             WAKE_UP: [MessageHandler(filters.Regex("^(Yes|No)$"), asleep_time)],
-            ASLEEP_TIME: [MessageHandler(filters.TEXT, photo), CommandHandler("skip", skip_photo)],
-            LOCATION: [
-                MessageHandler(filters.LOCATION, location),
-                CommandHandler("skip", skip_location),
-            ],
-            BIO: [MessageHandler(filters.TEXT & ~filters.COMMAND, bio)],
+            ASLEEP_TIME: [MessageHandler(filters.TEXT, sleep_late)],
+            LATE_REASONS: [MessageHandler(filters.TEXT, sleep_late)],
+            SLEEP_LATE: [
+                MessageHandler(filters.TEXT, energy_levels)
+            ]
         },
         fallbacks=[CommandHandler("cancel", cancel)],
     )
