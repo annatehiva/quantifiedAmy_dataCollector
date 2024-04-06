@@ -20,7 +20,6 @@ The bot responds to commands defined in the 'singleorders.json' file, with vario
   - rebound: a command that triggers two questions and retrieves replies (ex: /stress, "highly stressed", "work reasons" -> table: timestamp/stress/highly stressed/work reasons)
 
 ## Future Improvements
-- Scheduled conversations: Implement scheduled interactions with users.
 - Data visualization: Enhance the bot's capabilities with data visualization features.
 - Tests.
 
