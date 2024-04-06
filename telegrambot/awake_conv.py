@@ -30,6 +30,8 @@ DB_CONFIG = {
 conn = psycopg2.connect(**DB_CONFIG)
 cursor = conn.cursor()
 
+current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
 # Only reply to messages from my chat_id
 def echo(update: Update, context: CallbackContext) -> None:
     if update.message.chat_id == my_chat_id:
@@ -51,7 +53,6 @@ WAKE_UP, ASLEEP_TIME, LATE_REASONS, SLEEP_LATE = range(4)
 
 async def awake(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     reply_keyboard = [["Natural","Bothered","Alarm"]]
-    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S') 
     create_table_if_not_exists("awake","wake_up_time TEXT")
     insert_data("awake",(current_time,))
     await update.message.reply_text(
@@ -66,9 +67,9 @@ async def awake(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 async def asleep_time(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.message.text
-    create_table_if_not_exists("way_I_woke_up","type TEXT")
+    create_table_if_not_exists("way_I_woke_up","datetime TEXT, type TEXT")
     if user == "Natural" or user == "Bothered" or user == "Alarm":
-        insert_data("way_I_woke_up",(user,))
+        insert_data("way_I_woke_up",(current_time,user))
         await update.message.reply_text(
         "When did you fall asleep ?",
         reply_markup=ReplyKeyboardRemove())
@@ -84,7 +85,7 @@ async def sleep_late(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     reply_keyboard = [[str(value) for value in answers.values()]]
     context.user_data['answers'] = answers
 
-    create_table_if_not_exists("asleep_time","time TEXT, reasons TEXT")
+    create_table_if_not_exists("asleep_time","datetime TEXT, time TEXT, reasons TEXT")
     if user_hour>24:
         await update.message.reply_text("Invalid answer, try again babe")
         return ASLEEP_TIME
@@ -97,7 +98,7 @@ async def sleep_late(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text("What's your energy level this morning ?", reply_markup=ReplyKeyboardMarkup(
         reply_keyboard, one_time_keyboard=True
         ))
-        insert_data("asleep_time",(user_hour,None))
+        insert_data("asleep_time",(current_time, user_hour,None))
         return SLEEP_LATE
     
 async def late_sleep_reasons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -111,13 +112,12 @@ async def late_sleep_reasons(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await update.message.reply_text("What's your energy level this morning ?", reply_markup=ReplyKeyboardMarkup(
     reply_keyboard, one_time_keyboard=True
     ))
-    insert_data("asleep_time",(user_hour, user))
+    insert_data("asleep_time",(current_time,user_hour, user))
     return SLEEP_LATE
 
 
 async def energy_levels(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    create_table_if_not_exists("energy_levels","time TEXT, level INT")
-    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S') 
+    create_table_if_not_exists("energy_levels","datetime TEXT, level INT")
     answers = context.user_data['answers']
     user = update.message.text
     for key, value in answers.items():
