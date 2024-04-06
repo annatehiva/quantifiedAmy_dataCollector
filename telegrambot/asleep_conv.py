@@ -59,7 +59,6 @@ async def asleep(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['reply_keyboard'] = reply_keyboard
     await update.message.reply_text(
         "Hey Sunshine\n\n"
-        "Send /cancel to stop talking to me.\n\n"
         "How was your day?",
         reply_markup=ReplyKeyboardMarkup(
             reply_keyboard, one_time_keyboard=True
@@ -107,7 +106,6 @@ async def meals_quantity(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await update.message.reply_text("Did you take your vitamins today?", reply_markup=ReplyKeyboardMarkup(
         vitamins_keyboard, one_time_keyboard=True
     ))
-    print("exit")
     return MEALS_QUANTITY
 
 
