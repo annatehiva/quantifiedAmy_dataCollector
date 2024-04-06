@@ -30,6 +30,8 @@ DB_CONFIG = {
 conn = psycopg2.connect(**DB_CONFIG)
 cursor = conn.cursor()
 
+current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
 # Only reply to messages from my chat_id
 def echo(update: Update, context: CallbackContext) -> None:
     if update.message.chat_id == my_chat_id:
@@ -72,8 +74,8 @@ async def day_rating(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     for key, value in answers.items():
         if user == value:
             rating = key
-    create_table_if_not_exists("day_rating","rating TEXT")
-    insert_data("day_rating",(rating,))
+    create_table_if_not_exists("day_rating","datetime TEXT, rating TEXT")
+    insert_data("day_rating",(current_time, rating))
     await update.message.reply_text("How productive have you been today?", reply_markup=ReplyKeyboardMarkup(
         reply_keyboard, one_time_keyboard=True
     ))
@@ -86,8 +88,8 @@ async def productivity_rating(update: Update, context: ContextTypes.DEFAULT_TYPE
     for key, value in answers.items():
         if user == value:
             rating = key
-    create_table_if_not_exists("productivity_rating","rating TEXT")
-    insert_data("productivity_rating",(rating,))
+    create_table_if_not_exists("productivity_rating","datetime TEXT, rating TEXT")
+    insert_data("productivity_rating",(current_time, rating))
     await update.message.reply_text("How many meals did you have today?", reply_markup=ReplyKeyboardMarkup(
         reply_keyboard, one_time_keyboard=True
     ))
@@ -100,8 +102,8 @@ async def meals_quantity(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     for key, value in answers.items():
         if user == value:
             meal = key
-    create_table_if_not_exists("meals_quantity","rating TEXT")
-    insert_data("meals_quantity",(meal,))
+    create_table_if_not_exists("meals_quantity","datetime TEXT, rating TEXT")
+    insert_data("meals_quantity",(current_time, meal))
     await update.message.reply_text("Did you take your vitamins today?", reply_markup=ReplyKeyboardMarkup(
         vitamins_keyboard, one_time_keyboard=True
     ))
@@ -111,16 +113,16 @@ async def meals_quantity(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 async def vitamins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.message.text
-    create_table_if_not_exists("vitamins","rating TEXT")
-    insert_data("vitamins",(user,))
+    create_table_if_not_exists("vitamins","datetime TEXT, rating TEXT")
+    insert_data("vitamins",(current_time, user))
     await update.message.reply_text("Tell me about your day")
 
     return VITAMINS
 
 async def journaling(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.text
-    create_table_if_not_exists("journaling","journal TEXT")
-    insert_data("journaling",(user,))
+    create_table_if_not_exists("journaling","datetime TEXT, journal TEXT")
+    insert_data("journaling",(current_time, user))
     await update.message.reply_text("Okay baby, time to sleep")
 
     return ConversationHandler.END
