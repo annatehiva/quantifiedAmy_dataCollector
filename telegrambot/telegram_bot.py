@@ -91,9 +91,7 @@ async def hub_command(update: Update, context: ContextTypes) -> int:
         if user_command == simple['key']: #if user's command = simple -> END
             context.user_data['command'] = None
             create_table_if_not_exists(user_command, "command TEXT")
-            print("test")
             insert_data(user_command, (user_command))
-            print("testouille")
             await update.message.reply_text(simple['reply'])
             return
     for no_rebound in no_rebound_commands:
