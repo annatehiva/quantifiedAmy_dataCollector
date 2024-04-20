@@ -33,14 +33,41 @@ def echo(update: Update, context: CallbackContext) -> None:
     if update.message.chat_id == my_chat_id:
         update.message.reply_text(update.message.text)    
 
+# Time variables
+now = datetime.now()
+year = now.strftime("%Y")
+month = now.strftime("%m")
+week = now.strftime("%V")
+day = now.strftime("%d")
+hour = now.strftime("%H")
+minute = now.strftime("%M")
+yearmonth = now.strftime("%Y%m")
+yearweek = now.strftime("%Y%V")
+if month in ['01', '02', '03']:
+    quarter = 1
+elif month in ['04', '05', '06']:
+    quarter = 2
+elif month in ['07', '08', '09']:
+    quarter = 3
+else:
+    quarter = 4
+all_values = (yearmonth, yearweek, year, quarter, month, week, day, hour, minute)
+
+
 # Database gestion
 def create_table_if_not_exists(table_name, data):
-    create_table_query = f"CREATE TABLE IF NOT EXISTS {table_name} ({data})"
+    create_table_query = f"CREATE TABLE IF NOT EXISTS {table_name} (id SERIAL PRIMARY KEY, yearmonth INT, yearweek INT, year SMALLINT, quarter SMALLINT, month SMALLINT, week SMALLINT, day SMALLINT, hour SMALLINT, minute SMALLINT, {data})"
     cursor.execute(create_table_query)
     conn.commit()
 def insert_data(table_name, data):
-    insert_query = f"INSERT INTO {table_name} VALUES %s"
-    cursor.execute(insert_query, (data,))
+    if not isinstance(data, tuple): #convert to a tuple if it's not already
+        data = (data,)
+    data = all_values + data #all_values and data are compatible as they're both tuples
+    cursor.execute(f"SELECT column_name FROM information_schema.columns WHERE table_name = '{table_name}'") #query to check number of columns
+    columns = [row[0] for row in cursor.fetchall() if row[0] != 'id'] #select all columns except the "id" one
+    placeholders = ', '.join(['%s'] * len(columns)) #creates placeholders for all columns except "id"
+    insert_query = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({placeholders})" 
+    cursor.execute(insert_query, data)
     conn.commit()
 
 
@@ -59,27 +86,28 @@ rebound_commands = data["single_orders"]["commands"]['rebound']
 # hub to process user's commands
 async def hub_command(update: Update, context: ContextTypes) -> int:
     command_received = update.message.text
-    user_command = command_received[1:] 
-    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')    
+    user_command = command_received[1:]    
     for  simple in simple_commands:
         if user_command == simple['key']: #if user's command = simple -> END
             context.user_data['command'] = None
-            create_table_if_not_exists(user_command, "timestamp TEXT, command TEXT")
-            insert_data(user_command, (current_time, user_command))
+            create_table_if_not_exists(user_command, "command TEXT")
+            print("test")
+            insert_data(user_command, (user_command))
+            print("testouille")
             await update.message.reply_text(simple['reply'])
             return
     for no_rebound in no_rebound_commands:
         if user_command == no_rebound['key']: #if user's command = no_rebound -> redirection
             context.user_data['command'] = no_rebound
             context.user_data['state'] = 'no_rebound'
-            create_table_if_not_exists(user_command, "timestamp TEXT, command TEXT, reason TEXT")
+            create_table_if_not_exists(user_command, "command TEXT, reason TEXT")
             await pannel_command(update,context)
             return
     for rebound in rebound_commands:
         if user_command == rebound['key']: #if user's command = rebound -> redirection
             context.user_data['command'] = rebound
             context.user_data['state'] = 'rebound'
-            create_table_if_not_exists(user_command, "timestamp TEXT, command TEXT, answer1 TEXT, answer2 TEXT")
+            create_table_if_not_exists(user_command, "command TEXT, answer1 TEXT, answer2 TEXT")
             await pannel_command(update,context)
             return
     await update.message.reply_text('Unknown command')
@@ -94,7 +122,6 @@ async def pannel_command(update: Update, context: ContextTypes, ) -> int:
 
 # manages state of conversation
 async def handle_button_click(update: Update, context: ContextTypes) -> None:
-    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     user_response = update.message.text
     if not context.user_data.get("state"):
         await update.message.reply_text('Sorry, this message cannot be processed.')
@@ -106,7 +133,7 @@ async def handle_button_click(update: Update, context: ContextTypes) -> None:
     if state == 'final': #insert rebound command into db
         key = context.user_data['key']
         answer1 = context.user_data['answer1']
-        insert_data(key, (current_time, key, answer1, user_response))
+        insert_data(key, (key, answer1, user_response))
         await update.message.reply_text(response['reply'])
         context.user_data['command'] = None
         context.user_data['state'] = None
@@ -123,18 +150,17 @@ async def handle_button_click(update: Update, context: ContextTypes) -> None:
 # manages automatic or custom reply
 async def no_rebound_command(update: Update, context: ContextTypes) -> None:
     user_response = update.message.text
-    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     response = context.user_data['command']
     key = context.user_data['command']['key']
     if find_key(response['buttons'], user_response) == None:
-        insert_data(key, (current_time, key, user_response))
+        insert_data(key, (key, user_response))
         await update.message.reply_text(response['reply'])
         context.user_data['state'] = None
         return
               
     key_find = find_key(response['buttons'], user_response)
     response = response['follow_up_replies']
-    insert_data(key, (current_time, key, user_response))
+    insert_data(key, (key, user_response))
     await update.message.reply_text(response[key_find])
     context.user_data['command'] = None
     context.user_data['state'] = None
