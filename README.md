@@ -22,5 +22,3 @@ The bot responds to commands defined in the 'singleorders.json' file, with vario
 ## Future Improvements
 - Data visualization: Enhance the bot's capabilities with data visualization features.
 - Tests.
-
-For questions or feedback, please feel free to contact: gitfb.reenter889@passmail.net.
